@@ -1,7 +1,30 @@
 from datetime import datetime
 from flask_wtf import Form
-from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField
+from enum import Enum
+from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
 from wtforms.validators import DataRequired, AnyOf, URL
+
+
+class Genres(Enum):
+    Alternative='Alternative'
+    Blues= 'Blues'
+    Classical= 'Classical'
+    Country='Country'
+    Electronic= 'Electronic'
+    Folk='Folk'
+    Funk= 'Funk'
+    HipHop= 'HipHop'
+    HeavyMetal= 'HeavyMetal'
+    Instrumental= 'Instrumental'
+    Jazz= 'Jazz'
+    MusicalTheatre= 'MusicalTheatre'
+    Pop= 'Pop'
+    Punk= 'Punk'
+    RB= 'RB'
+    Reggae= 'Reggae'
+    RocknRoll ='RocknRoll'
+    Soul='Soul'
+    Other= 'Other'
 
 class ShowForm(Form):
     artist_id = StringField(
@@ -85,37 +108,30 @@ class VenueForm(Form):
     phone = StringField(
         'phone'
     )
+
+    website = StringField(
+        'website', validators=[URL()]
+    )
     image_link = StringField(
-        'image_link'
+
+        'image_link', validators=[URL()]
     )
-    genres = SelectMultipleField(
-        # TODO implement enum restriction
-        'genres', validators=[DataRequired()],
-        choices=[
-            ('Alternative', 'Alternative'),
-            ('Blues', 'Blues'),
-            ('Classical', 'Classical'),
-            ('Country', 'Country'),
-            ('Electronic', 'Electronic'),
-            ('Folk', 'Folk'),
-            ('Funk', 'Funk'),
-            ('Hip-Hop', 'Hip-Hop'),
-            ('Heavy Metal', 'Heavy Metal'),
-            ('Instrumental', 'Instrumental'),
-            ('Jazz', 'Jazz'),
-            ('Musical Theatre', 'Musical Theatre'),
-            ('Pop', 'Pop'),
-            ('Punk', 'Punk'),
-            ('R&B', 'R&B'),
-            ('Reggae', 'Reggae'),
-            ('Rock n Roll', 'Rock n Roll'),
-            ('Soul', 'Soul'),
-            ('Other', 'Other'),
-        ]
-    )
+
+    genres = SelectMultipleField('genres', validators=[DataRequired(), AnyOf(values=[genres.value for genres in Genres])],
+    choices=[(genres.value, genres.value) for genres in Genres])
+
     facebook_link = StringField(
         'facebook_link', validators=[URL()]
     )
+    seeking_talent = SelectField(
+        # TODO implement enum restriction
+        'genres', validators=[DataRequired()],
+        choices=[(True,True), (False,False)]
+        )
+    seeking_description = StringField(
+        'seeking_description'
+    )
+
 
 class ArtistForm(Form):
     name = StringField(
@@ -184,37 +200,26 @@ class ArtistForm(Form):
         # TODO implement validation logic for state
         'phone'
     )
-    image_link = StringField(
-        'image_link'
-    )
-    genres = SelectMultipleField(
-        # TODO implement enum restriction
-        'genres', validators=[DataRequired()],
-        choices=[
-            ('Alternative', 'Alternative'),
-            ('Blues', 'Blues'),
-            ('Classical', 'Classical'),
-            ('Country', 'Country'),
-            ('Electronic', 'Electronic'),
-            ('Folk', 'Folk'),
-            ('Funk', 'Funk'),
-            ('Hip-Hop', 'Hip-Hop'),
-            ('Heavy Metal', 'Heavy Metal'),
-            ('Instrumental', 'Instrumental'),
-            ('Jazz', 'Jazz'),
-            ('Musical Theatre', 'Musical Theatre'),
-            ('Pop', 'Pop'),
-            ('Punk', 'Punk'),
-            ('R&B', 'R&B'),
-            ('Reggae', 'Reggae'),
-            ('Rock n Roll', 'Rock n Roll'),
-            ('Soul', 'Soul'),
-            ('Other', 'Other'),
-        ]
-    )
+
+    website = StringField('website', validators=[URL()])
+
+    genres = SelectMultipleField('genres', validators=[DataRequired(), AnyOf(values=[genres.value for genres in Genres])],
+    choices=[(genres.value, genres.value) for genres in Genres])
+
+
     facebook_link = StringField(
-        # TODO implement enum restriction
+
         'facebook_link', validators=[URL()]
     )
+    image_link = StringField(
 
-# TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
+        'image_link', validators=[URL()]
+    )
+    seeking_venue = SelectField(
+
+        'seeking_venue', validators=[DataRequired()],
+        choices=[(True,True), (False,False)])
+    seeking_description = StringField(
+
+        'seeking_description', validators=[DataRequired()]
+    )
