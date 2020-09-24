@@ -2,15 +2,21 @@
 # Imports
 #----------------------------------------------------------------------------#
 from datetime import datetime
+from models import app, db, Venue, Artist, Show
 import datetime
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort
+from flask import (
+	Flask,
+	render_template,
+	request, Response,
+	flash,
+	redirect,
+	url_for,
+	abort
+)
 from flask_moment import Moment
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, DateTime
-from flask_migrate import Migrate
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
@@ -19,148 +25,13 @@ from forms import *
 # App Config.
 #----------------------------------------------------------------------------#
 
-app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-# TODO: connect to a local postgresql database
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:191198@localhost/fyyur"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-	__tablename__ = 'Venue'
-
-	id = db.Column(db.Integer, primary_key=True)
-	name = db.Column(db.String)
-	city = db.Column(db.String(120))
-	state = db.Column(db.String(120))
-	address = db.Column(db.String(120))
-	phone = db.Column(db.String(120))
-	website = db.Column(db.String(120))
-	genres = db.Column(db.String(120))
-	image_link = db.Column(db.String(500))
-	facebook_link = db.Column(db.String(120))
-	seeking_talent = db.Column(db.Boolean(), unique=False, default=True)
-	seeking_description = db.Column(db.String(500))
-	shows = db.relationship('Show', backref='show_v', cascade="all,delete")
-
-	def upcoming_shows(self):
-		return Show.query.filter(Show.start_time>= datetime.today(),Show.venue_id==self.id)
-
-	def upcoming_shows_count(self):
-		return Show.query.filter(Show.start_time>= datetime.today(),Show.venue_id==self.id).count()
-
-	def past_shows(self):
-		return Show.query.filter(Show.start_time < datetime.today(),Show.venue_id==self.id)
-
-	def past_shows_count(self):
-		return Show.query.filter(Show.start_time < datetime.today(),Show.venue_id==self.id).count()
-
-
-
-	def __init__(self, name, city, state, address, phone, website, genres, image_link,
-	 			facebook_link, seeking_talent, seeking_description):
-		self.name = name
-		self.city = city
-		self.phone = phone
-		self.state = state
-		self.address = address
-		self.image_link = image_link
-		self.facebook_link = facebook_link
-		self.website = website
-		self.genres = genres
-		self.seeking_talent = seeking_talent
-		self.seeking_description = seeking_description
-
-
-
-	def __repr__(self):
-		return f"<Venue {self.name}>"
-
-	# TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-class Artist(db.Model):
-	__tablename__ = 'Artist'
-
-	id = db.Column(db.Integer, primary_key=True)
-	name = db.Column(db.String)
-	city = db.Column(db.String(120))
-	state = db.Column(db.String(120))
-	phone = db.Column(db.String(120))
-	website = db.Column(db.String(120))
-	genres = db.Column(db.String(120))
-	image_link = db.Column(db.String(500))
-	facebook_link = db.Column(db.String(120))
-	seeking_venue = db.Column(db.Boolean(), unique=False, default=True)
-	seeking_description = db.Column(db.String(500))
-	shows = db.relationship('Show', backref='show_a', cascade="all,delete")
-
-	def upcoming_shows(self):
-		return Show.query.filter(Show.start_time>= datetime.today(),Show.artist_id==self.id)
-
-	def upcoming_shows_count(self):
-		return Show.query.filter(Show.start_time>= datetime.today(),Show.artist_id==self.id).count()
-
-	def past_shows(self):
-		return Show.query.filter(Show.start_time < datetime.today(),Show.artist_id==self.id)
-
-	def past_shows_count(self):
-		return Show.query.filter(Show.start_time < datetime.today(),Show.artist_id==self.id).count()
-
-	def __init__(self, name, city, state, phone, genres, website, image_link,
-				facebook_link, seeking_venue, seeking_description):
-		self.name = name
-		self.city = city
-		self.phone = phone
-		self.state= state
-		self.genres= genres
-		self.image_link= image_link
-		self.facebook_link= facebook_link
-		self.website = website
-		self.seeking_venue = seeking_venue
-		self.seeking_description = seeking_description
-
-	def __repr__(self):
-		return f"<Artist {self.name}>"
-
-
-class Show(db.Model):
-	__tablename__ = 'Show'
-
-	id = db.Column(db.Integer, primary_key=True)
-	start_time = db.Column(db.DateTime)
-	venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
-	artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), nullable=False)
-
-	def venue_name(self):
-		v = Venue.query.get(self.venue_id)
-		return v.name
-
-	def venue_image_link(self):
-		v = Venue.query.get(self.venue_id)
-		return v.image_link
-
-	def artist_name(self):
-		artist = Artist.query.get(self.artist_id)
-		return artist.name
-
-	def artist_image_link(self):
-		artist = Artist.query.get(self.artist_id)
-		return artist.image_link
-
-
-
-	def __init__(self, start_time, venue_id, artist_id):
-		self.start_time = start_time
-		self.venue_id = venue_id
-		self.artist_id = artist_id
-
-	def __repr__(self):
-		return f"<Show: {self.start_time}>"
 
 
 #----------------------------------------------------------------------------#
@@ -190,37 +61,31 @@ def index():
 #  Venues
 #  ----------------------------------------------------------------
 
-@app.route('/venues', methods=['POST', 'GET'])
+@app.route('/venues')
 def venues():
+	""" This method list all exist venues in database """
 
-	if request.method == 'POST':
-		new_venue = Venue(request.form['name'], request.form['city'], request.form['state'],
-		request.form['address'],request.form['genres'], request.form['phone'], request.form['website'], request.form['image_link'],
-		 request.form['facebook_link'], request.form['seeking_talent'], request.form['seeking_description'])
+	locals = []
+	venues = Venue.query.all()
+	for place in Venue.query.distinct(Venue.city, Venue.state).all():
+		locals.append({
+        'city': place.city,
+        'state': place.state,
+        'venues': [{
+            'id': venue.id,
+            'name': venue.name,
+        } for venue in venues if
+            venue.city == place.city and venue.state == place.state]
+    })
 
-
-		db.session.add(new_venue)
-		db.session.commit()
-		return {"message": f"venue {new_venue.name} has been created"}
-
-
-	elif request.method == 'GET':
-		venues = Venue.query.all()
-
-		results = [{
-		"city": venue.city,
-		"state": venue.state,
-		"venues": [{
-		"id": v.id,
-		"name": v.name,
-		"num_upcoming_shows": Show.query.filter_by(venue_id=v.id),
-		} for v in Venue.query.filter_by(city=venue.city).all()]
-		} for venue in venues]
-		return render_template('pages/venues.html', areas=results);
+	return render_template('pages/venues.html', areas=locals);
 
 
 @app.route('/venues/search', methods=['GET', 'POST'])
 def search_venues():
+	""" Search Method: takes the search term from search label (POST)
+	and returns every venue that it's name contains the search term (GET) """
+
 	search_term=request.form['search_term']
 	result= Venue.query.filter(Venue.name.like('%' + search_term + '%'))
 
@@ -237,8 +102,28 @@ def search_venues():
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
+
+	"""This method takes venue's id and redirects to this
+	venue's page that contains all the details about this venue"""
+
 	venue = Venue.query.get(venue_id)
 	shows=Show.query.filter(venue_id==venue.id)
+	past_shows = db.session.query(Artist, Show).join(Show).join(Venue).\
+    filter(
+        Show.venue_id == venue_id,
+        Show.artist_id == Artist.id,
+        Show.start_time < datetime.now()
+    ).\
+    all()
+
+	upcoming_shows = db.session.query(Artist, Show).join(Show).join(Venue).\
+    filter(
+        Show.venue_id == venue_id,
+        Show.artist_id == Artist.id,
+        Show.start_time > datetime.now()
+    ).\
+    all()
+
 	data={
     "id": venue.id ,
     "name": venue.name,
@@ -251,27 +136,42 @@ def show_venue(venue_id):
     "facebook_link": venue.facebook_link,
     "seeking_talent": venue.seeking_talent,
     "seeking_description": venue.seeking_description,
-    "image_link": venue,
-    "upcoming_shows": [{
-      "artist_id": sh.artist_id,
-      "artist_name": Artist.query.get(sh.artist_id).name,
-      "artist_image_link": "",
-      "start_time": sh.start_time
-    } for sh in shows],}
+    "image_link": venue.image_link,
+    'past_shows': [{
+            'artist_id': artist.id,
+            "artist_name": artist.name,
+            "artist_image_link": artist.image_link,
+            "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
+        } for artist, show in past_shows],
+        'upcoming_shows': [{
+            'artist_id': artist.id,
+            'artist_name': artist.name,
+            'artist_image_link': artist.image_link,
+            'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+        } for artist, show in upcoming_shows],
+        'past_shows_count': len(past_shows),
+        'upcoming_shows_count': len(upcoming_shows)
+    }
 
 
-	return render_template('pages/show_venue.html', venue=venue)
+	return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
 #  ----------------------------------------------------------------
 
 @app.route('/venues/create', methods=['GET'])
 def create_venue_form():
+
+  """ This function to invoke venue's form so the user can fill it """
+
   form = VenueForm()
   return render_template('forms/new_venue.html', form=form)
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
+
+	"""This method create venues by taking venues details from venue's
+	 form that user should fill and create the venue using these details"""
 
 
 	name = request.form['name']
@@ -325,6 +225,10 @@ def create_venue_submission():
 
 @app.route('/venues/<venue_id>/delete/', methods=['GET'])
 def delete_venue(venue_id):
+
+	"""This method takes venue's ID and delete the venue that has given ID from database"""
+
+
 	error = False
 	body = {}
 	try:
@@ -341,33 +245,26 @@ def delete_venue(venue_id):
 
 #  Artists
 #  ----------------------------------------------------------------
-@app.route('/artists', methods=['POST', 'GET'])
+@app.route('/artists')
 def artists():
+	"""This method list all exist artists in database """
 
-		if request.method == 'POST':
-			new_artist = Artist(request.form['name'], request.form['city'], request.form['state'],
-			request.form['phone'], request.form['genres'], request.form['image_link'], request.form['facebook_link'],
-			request.form['website'], request.form['seeking_venue'], request.form['seeking_description'])
-
-
-			db.session.add(new_artist)
-			db.session.commit()
-			return {"message": f"artist {new_artist.name} has been created"}
+	artists = Artist.query.all()
+	data=[{
+	"id": artist.id,
+	"name": artist.name,
+	} for artist in artists]
 
 
-		elif request.method == 'GET':
-	  		artists = Artist.query.all()
-	  		data=[{
-		  	"id": artist.id,
-		  	"name": artist.name,
-		    } for artist in artists]
-
-
-	  		return render_template('pages/artists.html', artists=data)
+	return render_template('pages/artists.html', artists=data)
 
 
 @app.route('/artists/search', methods=['POST'])
 def search_artists():
+
+	""" Search Method: takes the search term from search label (POST)
+	and returns every artist that it's name contains the search term (GET) """
+
 	search_term=request.form['search_term']
 	result= Artist.query.filter(Artist.name.like('%' + search_term + '%'))
 
@@ -385,19 +282,71 @@ def search_artists():
 @app.route('/artists/<int:artist_id>')
 def show_artist(artist_id):
 
+	"""This method takes artist's id and redirects to this
+	artist's page that contains all the details about this artist"""
+
 	artist = Artist.query.get(artist_id)
+	shows=Show.query.filter(artist_id==artist.id)
+
+	past_shows = db.session.query(Venue, Show).join(Show).join(Artist).\
+    filter(
+        Show.artist_id == artist_id,
+        Show.venue_id == Venue.id,
+        Show.start_time < datetime.now()
+    ).\
+    all()
+
+	upcoming_shows = db.session.query(Venue, Show).join(Show).join(Artist).\
+    filter(
+        Show.venue_id == Venue.id,
+        Show.artist_id == artist_id,
+        Show.start_time > datetime.now()
+    ).\
+    all()
 
 
-	return render_template('pages/show_artist.html', artist=artist)
+	data={
+    "id": artist.id ,
+    "name": artist.name,
+    "genres": artist.genres,
+    "city": artist.city,
+    "state": artist.state,
+    "phone": artist.phone,
+    "website": artist.website,
+    "facebook_link": artist.facebook_link,
+    "seeking_venue": artist.seeking_venue,
+    "seeking_description": artist.seeking_description,
+    "image_link": artist.image_link,
+    'past_shows': [{
+            'venue_id': venue.id,
+            "venue_name": venue.name,
+            "venue_image_link": venue.image_link,
+            "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
+        } for venue, show in past_shows],
+        'upcoming_shows': [{
+            'venue_id': venue.id,
+            'venue_name': venue.name,
+            'venue_image_link': venue.image_link,
+            'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+        } for venue, show in upcoming_shows],
+        'past_shows_count': len(past_shows),
+        'upcoming_shows_count': len(upcoming_shows)
+    }
+
+	return render_template('pages/show_artist.html', artist=data)
 
 #  Update
 #  ----------------------------------------------------------------
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
-  result = Artist.query.get(artist_id)
-  form = ArtistForm(obj=result)
 
-  artist={
+	""" This method takes artist's ID and fill artist form
+	with artist's details to edit this details"""
+
+	result = Artist.query.get(artist_id)
+	form = ArtistForm(obj=result)
+
+	artist={
 	"id": result.id,
 	"name": result.name,
 	"genres": result.genres,
@@ -409,52 +358,60 @@ def edit_artist(artist_id):
 	"seeking_venue": result.seeking_venue,
 	"seeking_description": result.seeking_description,
 	"image_link":result.image_link,
-  }
+	}
 
-  return render_template('forms/edit_artist.html', form=form, artist=artist)
+	return render_template('forms/edit_artist.html', form=form, artist=artist)
 
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
-	  result = Artist.query.get(artist_id)
-	  form = ArtistForm(formdata=request.form, obj=result)
-	  name = request.form['name']
-	  city = request.form['city']
-	  state = request.form['state']
-	  phone = request.form['phone']
-	  genres = request.form['genres']
-	  website = request.form['website']
-	  image_link = request.form['image_link']
-	  facebook_link = request.form['facebook_link']
-	  seeking_venue = request.form['seeking_venue']
-	  seeking_description = request.form['seeking_description']
-	  if seeking_venue=="False":
-		  seeking_venue=False
-	  else:
-		  seeking_venue=True
-	  result.name=name
-	  result.city = city
-	  result.state = state
-	  result.phone = phone
-	  result.genres = genres
-	  result.website = website
-	  result.image_link = image_link
-	  result.facebook_link = facebook_link
-	  result.seeking_venue = seeking_venue
-	  result.seeking_description = seeking_description
+
+	""" Here the method takes the given artist's ID and takes the details of
+	this artist from artist form and submit the changes of these details"""
+
+	result = Artist.query.get(artist_id)
+	form = ArtistForm(formdata=request.form, obj=result)
+	name = request.form['name']
+	city = request.form['city']
+	state = request.form['state']
+	phone = request.form['phone']
+	genres = request.form['genres']
+	website = request.form['website']
+	image_link = request.form['image_link']
+	facebook_link = request.form['facebook_link']
+	seeking_venue = request.form['seeking_venue']
+	seeking_description = request.form['seeking_description']
+	if seeking_venue=="False":
+		seeking_venue=False
+	else:
+		seeking_venue=True
+		result.name=name
+		result.city = city
+		result.state = state
+		result.phone = phone
+		result.genres = genres
+		result.website = website
+		result.image_link = image_link
+		result.facebook_link = facebook_link
+		result.seeking_venue = seeking_venue
+		result.seeking_description = seeking_description
 
 
-	  db.session.commit()
+		db.session.commit()
 
 
-	  return redirect(url_for('show_artist', artist_id=artist_id))
+	return redirect(url_for('show_artist', artist_id=artist_id))
 
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
-  result = Venue.query.get(venue_id)
-  form = VenueForm(obj=result)
 
-  venue={
+	""" This method takes venue's ID and fill venue form
+	with venue's details to edit this details"""
+
+	result = Venue.query.get(venue_id)
+	form = VenueForm(obj=result)
+
+	venue={
 	"id": result.id,
 	"name": result.name,
 	"address": result.address,
@@ -466,41 +423,46 @@ def edit_venue(venue_id):
 	"seeking_talent": result.seeking_talent,
 	"seeking_description": result.seeking_description,
 	"image_link":result.image_link,
-  }
+	}
 
-  return render_template('forms/edit_venue.html', form=form, venue=venue)
+	return render_template('forms/edit_venue.html', form=form, venue=venue)
 
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
-	 result = Venue.query.get(venue_id)
-	 form = VenueForm(formdata=request.form, obj=result)
-	 name = request.form['name']
-	 city = request.form['city']
-	 state = request.form['state']
-	 phone = request.form['phone']
-	 address = request.form['address']
-	 website = request.form['website']
-	 image_link = request.form['image_link']
-	 facebook_link = request.form['facebook_link']
-	 seeking_talent = request.form['seeking_talent']
-	 seeking_description = request.form['seeking_description']
-	 if seeking_talent=="False":
-		 seeking_talent=False
-	 else:
-		 seeking_talent=True
-	 result.name=name
-	 result.city = city
-	 result.state = state
-	 result.phone = phone
-	 result.address = address
-	 result.website = website
-	 result.image_link = image_link
-	 result.facebook_link = facebook_link
-	 result.seeking_talent = seeking_talent
-	 result.seeking_description = seeking_description
 
-	 db.session.commit()
-	 return redirect(url_for('show_venue', venue_id=venue_id))
+	""" Here the method takes the given venue's ID and takes the details of
+	this venue from venue form and save the changes of these details"""
+
+	result = Venue.query.get(venue_id)
+	form = VenueForm(formdata=request.form, obj=result)
+	name = request.form['name']
+	city = request.form['city']
+	state = request.form['state']
+	phone = request.form['phone']
+	address = request.form['address']
+	website = request.form['website']
+	image_link = request.form['image_link']
+	facebook_link = request.form['facebook_link']
+	seeking_talent = request.form['seeking_talent']
+	seeking_description = request.form['seeking_description']
+
+	if seeking_talent=="False":
+		seeking_talent=False
+	else:
+		seeking_talent=True
+		result.name=name
+		result.city = city
+		result.state = state
+		result.phone = phone
+		result.address = address
+		result.website = website
+		result.image_link = image_link
+		result.facebook_link = facebook_link
+		result.seeking_talent = seeking_talent
+		result.seeking_description = seeking_description
+
+		db.session.commit()
+		return redirect(url_for('show_venue', venue_id=venue_id))
 
 
 #  Create Artist
@@ -508,11 +470,17 @@ def edit_venue_submission(venue_id):
 
 @app.route('/artists/create', methods=['GET'])
 def create_artist_form():
+
+  """ This function to invoke artist's form so the user can fill it """
+
   form = ArtistForm()
   return render_template('forms/new_artist.html', form=form)
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
+
+		"""This method create venues by taking venues details from venue's
+		 form that user should fill and create the venue using these details"""
 
 		name = request.form['name']
 		city = request.form['city']
@@ -568,15 +536,9 @@ def create_artist_submission():
 
 @app.route('/shows')
 def shows():
-	if request.method == 'POST':
-		new_show = Show(request.form['artist_id'], request.form['venue_id'], request.form['start_time'])
 
-		db.session.add(new_show)
-		db.session.commit()
-		return {"message": f"show {new_show.name} has been created"}
+		"""returns list of all shows """
 
-
-	elif request.method == 'GET':
 		shows = Show.query.all()
 
 		results = [{
@@ -592,12 +554,18 @@ def shows():
 
 @app.route('/shows/create')
 def create_shows():
+
+  """ invoke show form to create new show """
   # renders form. do not touch.
   form = ShowForm()
   return render_template('forms/new_show.html', form=form)
 
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
+
+		"""This method create show by taking show details from show's
+		 form that user should fill and create the show using these details"""
+
 		artist_id = request.form['artist_id']
 		venue_id = request.form['venue_id']
 		start_time = request.form['start_time']
