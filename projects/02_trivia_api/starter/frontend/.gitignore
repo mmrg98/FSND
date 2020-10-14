@@ -1,40 +1,3 @@
-.vscode
-__pycache__
-venv
-
-# OS generated files #
-######################
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-.DS_Store
-.env
-.flaskenv
-*.pyc
-*.pyo
-env/
-env*
-dist/
-build/
-*.egg
-*.egg-info/
-_mailinglist
-.tox/
-.cache/
-.pytest_cache/
-.idea/
-docs/_build/
-.vscode
-
-# Coverage reports
-htmlcov/
-.coverage
-.coverage.*
-*,cover
 .DS_STORE
 node_modules
 scripts/flow/*/.flowconfig
@@ -76,5 +39,3 @@ packages/react-devtools-scheduling-profiler/dist
 
 
 # source : https://github.com/facebook/react/blob/master/.gitignore
-# source: https://github.com/pallets/flask/blob/master/.gitignore
-
