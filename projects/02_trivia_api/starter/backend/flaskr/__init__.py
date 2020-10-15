@@ -33,8 +33,14 @@ def create_app(test_config=None):
 	# CORS Headers
 	@app.after_request
 	def after_request(response):
-		response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization,true')
-		response.headers.add('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS')
+		response.headers.add(
+			'Access-Control-Allow-Headers',
+			'Content-Type, Authorization,true')
+
+		response.headers.add(
+			'Access-Control-Allow-Methods',
+			'GET,POST,DELETE,OPTIONS')
+
 		return response
 
 
@@ -44,7 +50,7 @@ def create_app(test_config=None):
 		selection= Question.query.order_by(Question.id).all()
 		current_questions = paginate_questions(request, selection)
 		categories = Category.query.order_by(Category.id).all()
-		categories = [category.type for category in categories]
+		categories = {category.id: category.type for category in categories}
 
 		if len(current_questions) == 0:
 			abort(404)
@@ -60,10 +66,13 @@ def create_app(test_config=None):
 
 	@app.route('/questions/<int:question_id>', methods=['DELETE'])
 	def delete_question(question_id):
-		'''take  question_id as parameter and delete the question with this id '''
+		'''take  question_id as parameter and
+		 delete the question with this id '''
 
 		try:
-			question = Question.query.filter(Question.id == question_id).one_or_none()
+			question = Question.query.filter(
+			Question.id == question_id
+			).one_or_none()
 
 			if question is None:
 				abort(422)
@@ -115,7 +124,9 @@ def create_app(test_config=None):
 		'''Search for question by in word in question title '''
 		search = request.json['search']
 		if search:
-			selection = Question.query.order_by(Question.id).filter(Question.question.like('%{}%'.format(search)))
+			selection = Question.query.order_by(Question.id).filter(
+			Question.question.ilike('%{}%'.format(search))
+			)
 			current_questions = paginate_questions(request, selection)
 
 			return jsonify({
@@ -130,7 +141,7 @@ def create_app(test_config=None):
 		'''return all categories '''
 
 		categories = Category.query.order_by(Category.id).all()
-		categories = [category.type for category in categories]
+		categories = {category.id: category.type for category in categories}
 
 		if len(categories) == 0:
 			abort(404)
@@ -145,7 +156,9 @@ def create_app(test_config=None):
 	def get_questions_by_category(category_id):
 		''' takes category_id as parameter and
 		return questions with this category type'''
-		selection= Question.query.order_by(Question.id).filter(Question.category == category_id).all()
+		selection= Question.query.order_by(Question.id).filter(
+		Question.category == category_id
+		).all()
 		current_questions = paginate_questions(request, selection)
 
 		if len(current_questions) == 0:
@@ -155,24 +168,48 @@ def create_app(test_config=None):
 			'success': True,
 			'questions': current_questions,
 			'total_questions': len(selection),
-			'current_category': Category.query.filter(Category.id == category_id).one_or_none().type
+			'current_category': Category.query.filter(
+			Category.id == category_id
+			).one_or_none().type
 		})
 
 	@app.route('/quizzes', methods=['POST'])
 	def get_quizzes():
-		'''takes category from quizzes page and
-		return at most 5 questions of this category '''
-		try:
-			category = request.get_json()
-			selection= Question.query.filter(Question.category==category).limit(5).all()
-			current_questions = paginate_questions(request, selection)
+		'''Takes category and previous_questionslist from quizzes page
+		and return at most 5 questions of this category '''
 
-			if len(current_questions) == 0:
-				abort(404)
+		data = request.get_json()
+		category = data.get('quiz_category')["id"]
+		previous_questions = data.get('previous_questions')
+		if int(category)==0:
+			selection= Question.query.all()
+		else:
+			selection= Question.query.filter(
+			Question.category==int(category)
+			).all()
+		current_questions = [question.format() for question in selection]
+		question= random.choice(current_questions)
+		if len(current_questions) == 0:
+			abort(404)
+
+		try:
+			if len(current_questions) >= 5:
+				if (question['id'] in previous_questions
+				and len(previous_questions) < 5):
+					while question['id'] in previous_questions:
+						question= random.choice(current_questions)
+			else:
+				if (question['id'] in previous_questions
+				and len(previous_questions) < len(current_questions)):
+					while question['id'] in previous_questions:
+						question= random.choice(current_questions)
+				else:
+					question= random.choice(current_questions)
 
 			return jsonify({
-				'previous_questions': current_questions,
-				'quiz_category': category
+				'previous_questions': previous_questions,
+				'quiz_category': category,
+				'question':question,
 			})
 
 		except:

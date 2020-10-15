@@ -46,21 +46,12 @@ class TriviaTestCase(unittest.TestCase):
 
 
     def test_404_error(self):
-        res = self.client().get('/questions?page=1000', json={'difficulty':1})
+        res = self.client().get('/questions?page=1000')
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code,404)
         self.assertEqual(data['success'], False)
         self.assertTrue(data['message'], 'resource not found')
-
-    def test_ubdate_questions_difficulty(self):
-        res = self.client().patch('/questions/5', json={'difficulty':2})
-        data = json.loads(res.data)
-        question = Question.query.filter(Question.id == 5).one_or_none()
-
-        self.assertEqual(res.status_code,200)
-        self.assertEqual(data['success'], True)
-        self.assertEqual(question.format()['difficulty'], 2)
 
     def test_questiont_search_with_result(self):
         res = self.client().post('/search', json={'search':'What'})
@@ -80,16 +71,8 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['questions'],[])
         self.assertEqual(data['total_questions'], 0)
 
-    def test_400_error(self):
-        res = self.client().patch('/questions/5')
-        data = json.loads(res.data)
-
-        self.assertEqual(res.status_code,400)
-        self.assertEqual(data['success'], False)
-        self.assertTrue(data['message'], 'bad request')
-
     def test_delete_question(self):
-        res = self.client().delete('/questions/14')
+        res = self.client().delete('/questions/13')
         data = json.loads(res.data)
         question = Question.query.filter(Question.id == 2).one_or_none()
 
@@ -106,7 +89,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], False)
         self.assertTrue(data['message'], 'unprocessable')
 
-    def test_create_book(self):
+    def test_create_question(self):
         res = self.client().post('/questions', json=self.new_question)
         data = json.loads(res.data)
 
