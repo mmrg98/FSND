@@ -21,7 +21,10 @@ This project uses NPM to manage software dependencies. NPM Relies on the package
 ```bash
 npm install
 ```
-
+or 
+```bash
+yarn install
+```
 >_tip_: **npm i** is shorthand for **npm install**
 
 ## Required Tasks
